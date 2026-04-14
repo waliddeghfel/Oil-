@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WalidOS · Oil Manager v3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+/* ═══ VARIABLES — DARK (default) ═══ */
+:root{
+  --bg:#0a0e16; --panel:#111827; --card:#161f2e; --card2:#1a2336;
+  --border:#1e2d45; --hover:#1c2a40;
+  --accent:#f59e0b; --accent2:#d97706; --accent3:#fbbf24;
+  --blue:#3b82f6; --blue2:#2563eb;
+  --green:#22c55e; --green2:#16a34a;
+  --red:#ef4444; --red2:#dc2626;
+  --purple:#a78bfa; --cyan:#06b6d4; --orange:#f97316;
+  --text:#f1f5f9; --dim:#94a3b8; --muted:#475569;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+  --topbar-bg:linear-gradient(90deg,#0d1420,#111827);
+  --topbar-shadow:0 2px 20px rgba(0,0,0,.5);
+}
+/* ═══ LIGHT THEME ═══ */
+:root.light{
+  --bg:#f0f4f8; --panel:#ffffff; --card:#f8fafc; --card2:#f1f5f9;
+  --border:#e2e8f0; --hover:#eef2f7;
+  --accent:#d97706; --accent2:#b45309; --accent3:#f59e0b;
+  --blue:#2563eb; --blue2:#1d4ed8;
+  --green:#16a34a; --green2:#15803d;
+  --red:#dc2626; --red2:#b91c1c;
+  --purple:#7c3aed; --cyan:#0891b2; --orange:#ea580c;
+  --text:#0f172a; --dim:#475569; --muted:#94a3b8;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+  --topbar-bg:linear-gradient(90deg,#ffffff,#f8fafc);
+  --topbar-shadow:0 2px 12px rgba(0,0,0,.08);
+}
+
+/* ═══ THEME TOGGLE BUTTON ═══ */
+.theme-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);
+  background:var(--card);color:var(--dim);
+  transition:all .2s;font-family:'IBM Plex Mono',monospace;
+  white-space:nowrap;
+}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+.theme-icon{font-size:13px;transition:transform .3s;}
+:root.light .theme-icon{transform:rotate(180deg);}
+
+/* ═══ FILE BACKUP STATUS PILL ═══ */
+.backup-pill{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:20px;
+  font-size:10px;font-weight:600;font-family:'IBM Plex Mono',monospace;
+  border:1px solid;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.backup-pill.no-folder{border-color:var(--muted);color:var(--muted);background:rgba(148,163,184,.08);}
+.backup-pill.has-folder{border-color:rgba(34,197,94,.4);color:var(--green);background:rgba(34,197,94,.07);}
+.backup-pill.saving{border-color:rgba(245,158,11,.4);color:var(--accent);background:rgba(245,158,11,.07);animation:pulse 1s infinite;}
+.backup-pill.unsupported{border-color:rgba(239,68,68,.3);color:var(--red);background:rgba(239,68,68,.05);cursor:default;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s;}
+
+/* ═══ TOPBAR ═══ */
+.topbar{
+  background:var(--topbar-bg);
+  border-bottom:1px solid var(--border);
+  padding:0 18px; height:54px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:80;
+  box-shadow:var(--topbar-shadow);
+  transition:background .3s, box-shadow .3s;
+}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.logo-icon{
+  width:34px;height:34px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 0 18px rgba(245,158,11,.35);
+}
+.logo-text h1{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:.5px;color:var(--text);}
+.logo-text small{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1px;display:block;}
+.topbar-center{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.topbar-right{display:flex;gap:5px;align-items:center;flex-shrink:0;}
+
+/* ── HAMBURGER DROPDOWN ── */
+.tb-menu-wrap{position:relative;display:none;}
+.tb-menu-btn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--dim);transition:all .15s;font-family:'Barlow',sans-serif;}
+.tb-menu-btn:hover,.tb-menu-btn.open{border-color:var(--accent);color:var(--accent);background:var(--hover);}
+.tb-dropdown{position:absolute;top:calc(100% + 7px);right:0;background:var(--panel);border:1px solid var(--border);border-radius:11px;min-width:210px;box-shadow:0 12px 40px rgba(0,0,0,.4);z-index:300;overflow:hidden;opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;transition:all .18s cubic-bezier(.34,1.2,.64,1);}
+.tb-dropdown.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+.dd-sec{padding:5px 0;border-bottom:1px solid var(--border);}
+.dd-sec:last-child{border-bottom:none;}
+.dd-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;padding:5px 13px 3px;font-family:'IBM Plex Mono',monospace;}
+.dd-item{display:flex;align-items:center;gap:9px;padding:8px 13px;font-size:12px;font-weight:500;color:var(--dim);cursor:pointer;transition:all .12s;font-family:'Barlow',sans-serif;background:transparent;border:none;width:100%;text-align:left;}
+.dd-item:hover{background:var(--hover);color:var(--text);}
+.dd-item .di{font-size:15px;width:22px;text-align:center;flex-shrink:0;}
+.dd-item.c-green{color:var(--green);}.dd-item.c-green:hover{background:rgba(34,197,94,.07);}
+.dd-item.c-blue{color:var(--blue);}.dd-item.c-blue:hover{background:rgba(59,130,246,.07);}
+.dd-item.c-purple{color:var(--purple);}.dd-item.c-purple:hover{background:rgba(167,139,250,.07);}
+.dd-item.c-orange{color:var(--orange);}.dd-item.c-orange:hover{background:rgba(249,115,22,.07);}
+.dd-item.c-amber{color:var(--accent);}.dd-item.c-amber:hover{background:rgba(245,158,11,.07);}
+.dd-item.c-red{color:var(--red);}.dd-item.c-red:hover{background:rgba(239,68,68,.07);}
+
+/* ── RESPONSIVE BREAKPOINTS ── */
+/* Large: all visible */
+@media(min-width:1100px){
+  .topbar-center{display:flex;}
+  .tb-menu-wrap{display:none;}
+  .sync-pill-lbl{display:inline;}
+  .backup-lbl{display:inline;}
+}
+/* Medium 700-1099: hide center labels, keep icons */
+@media(min-width:700px) and (max-width:1099px){
+  .topbar-center .btn-txt{display:none;}
+  .topbar-center button{padding:6px 8px;}
+  .sync-pill-lbl{display:none;}
+  .backup-lbl{display:none;}
+}
+/* Small <700px: hide center entirely, show hamburger */
+@media(max-width:699px){
+  .topbar-center{display:none !important;}
+  .tb-menu-wrap{display:block !important;}
+  .sync-pill{display:none;}
+  .backup-pill{display:none;}
+  .syncBtn-desktop,.pullBtn-desktop{display:none !important;}
+  .logo-text small{display:none;}
+  .topbar{padding:0 10px;}
+}
+/* Layout responsive */
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr;height:auto;}
+  .sidebar{height:auto;border-right:none;border-bottom:1px solid var(--border);}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .form-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:500px){
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .form-grid{grid-template-columns:1fr;}
+  .main{padding:12px 10px;}
+}
+
+/* GitHub sync status */
+.sync-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 10px;border-radius:20px;
+  font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;
+  border:1px solid;cursor:pointer;transition:all .2s;
+}
+.sync-pill.disconnected{border-color:var(--muted);color:var(--muted);background:rgba(71,85,105,.1);}
+.sync-pill.connected{border-color:rgba(34,197,94,.4);color:var(--green);background:rgba(34,197,94,.08);}
+.sync-pill.syncing{border-color:rgba(59,130,246,.4);color:var(--blue);background:rgba(59,130,246,.08);animation:pulse 1.2s infinite;}
+.sync-pill.error{border-color:rgba(239,68,68,.4);color:var(--red);background:rgba(239,68,68,.08);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+
+.tbtn{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 11px;border-radius:7px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--card);
+  color:var(--dim);transition:all .15s;font-family:'Barlow',sans-serif;white-space:nowrap;
+}
+.tbtn:hover{border-color:var(--accent);color:var(--accent);background:var(--hover);}
+.tbtn.c-green{border-color:rgba(34,197,94,.3);color:var(--green);}
+.tbtn.c-green:hover{background:rgba(34,197,94,.07);}
+.tbtn.c-blue{border-color:rgba(59,130,246,.3);color:var(--blue);}
+.tbtn.c-blue:hover{background:rgba(59,130,246,.07);}
+.tbtn.c-purple{border-color:rgba(167,139,250,.3);color:var(--purple);}
+.tbtn.c-purple:hover{background:rgba(167,139,250,.07);}
+.tbtn.c-orange{border-color:rgba(249,115,22,.3);color:var(--orange);}
+.tbtn.c-orange:hover{background:rgba(249,115,22,.07);}
+.tbtn.c-red{border-color:rgba(239,68,68,.3);color:var(--red);}
+.tbtn.c-red:hover{background:rgba(239,68,68,.07);}
+.reset-wrap{display:flex;align-items:center;gap:5px;padding:4px 8px;border:1px dashed rgba(239,68,68,.3);border-radius:7px;}
+#resetBtn{opacity:.25;pointer-events:none;transition:opacity .2s;}
+#resetBtn.armed{opacity:1;pointer-events:auto;}
+
+/* ═══ LAYOUT ═══ */
+.layout{display:grid;grid-template-columns:255px 1fr;height:calc(100vh - 54px);}
+.sidebar{background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:14px 12px;}
+.main{overflow-y:auto;padding:18px 22px;}
+
+/* ═══ SCROLLBAR ═══ */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ═══ SEC LABEL ═══ */
+.sec-lbl{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;
+  color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;
+  margin:14px 0 8px;padding-bottom:5px;
+  border-bottom:1px solid var(--border);
+}
+.sec-lbl:first-child{margin-top:0;}
+
+/* ═══ STOCK CARDS ═══ */
+.stock-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:9px;padding:10px 12px;margin-bottom:6px;
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.stock-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;background:var(--accent);opacity:0;transition:opacity .15s;}
+.stock-card:hover{border-color:rgba(245,158,11,.4);background:var(--hover);}
+.stock-card:hover::before{opacity:1;}
+.stock-card.low{border-color:rgba(239,68,68,.4);}
+.stock-card.low::before{background:var(--red);opacity:1;}
+.stock-card.empty{border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.04);}
+.stock-card.empty::before{background:var(--red);opacity:1;}
+.sc-row{display:flex;justify-content:space-between;align-items:center;}
+.sc-name{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--text);}
+.sc-badge{font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;letter-spacing:.8px;font-family:'IBM Plex Mono',monospace;}
+.ok{background:rgba(34,197,94,.12);color:var(--green);}
+.low-b{background:rgba(239,68,68,.15);color:var(--red);}
+.empty-b{background:rgba(239,68,68,.25);color:var(--red);}
+.sc-vol{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--text);margin:2px 0;}
+.sc-vol span{font-size:11px;color:var(--muted);font-weight:400;}
+.sc-bar{height:3px;background:var(--border);border-radius:3px;margin-top:4px;overflow:hidden;}
+.sc-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s ease;}
+.stock-card.low .sc-fill,.stock-card.empty .sc-fill{background:linear-gradient(90deg,var(--red),#f97316);}
+
+/* ═══ SOURCE CARDS ═══ */
+.src-card{border-radius:9px;padding:10px 12px;margin-bottom:6px;border:1px solid;}
+.src-card.c203{background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.25);}
+.src-card.chmd{background:rgba(167,139,250,.06);border-color:rgba(167,139,250,.25);}
+.src-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.src-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.src-card.c203 .src-title{color:var(--blue);}
+.src-card.chmd .src-title{color:var(--purple);}
+.src-month{font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.src-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.src-row:last-child{border-bottom:none;}
+.src-oil{font-size:11px;color:var(--dim);}
+.src-v{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.src-card.c203 .src-v{color:var(--blue);}
+.src-card.chmd .src-v{color:var(--purple);}
+.src-total{display:flex;justify-content:space-between;align-items:center;padding-top:6px;margin-top:5px;border-top:1px solid rgba(255,255,255,.07);}
+.src-total span{font-size:9px;color:var(--muted);}
+.src-total b{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;}
+.src-empty{font-size:10px;color:var(--muted);text-align:center;padding:6px 0;}
+
+/* Quick receive */
+.qr-form{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:11px;}
+.inp-s{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s;margin-bottom:6px;}
+.inp-s:focus{border-color:var(--accent);}
+.inp-s option{background:var(--card);}
+.btn-qr{width:100%;background:linear-gradient(135deg,var(--green),var(--green2));color:white;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:700;font-family:'Barlow',sans-serif;cursor:pointer;transition:opacity .15s;}
+.btn-qr:hover{opacity:.88;}
+
+/* ═══ STATS ═══ */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:13px 15px;position:relative;overflow:hidden;transition:border-color .15s;}
+.stat:hover{border-color:rgba(245,158,11,.2);}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.s-a::before{background:linear-gradient(90deg,var(--accent),var(--accent2));}
+.s-b::before{background:linear-gradient(90deg,var(--blue),var(--blue2));}
+.s-c::before{background:linear-gradient(90deg,var(--green),var(--green2));}
+.s-d::before{background:linear-gradient(90deg,var(--red),var(--red2));}
+.s-e::before{background:linear-gradient(90deg,var(--purple),#7c3aed);}
+.s-f::before{background:linear-gradient(90deg,var(--cyan),#0891b2);}
+.stat-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:'IBM Plex Mono',monospace;margin-bottom:5px;}
+.stat-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--text);line-height:1;}
+.stat-val small{font-size:13px;color:var(--dim);font-weight:400;}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+.stat-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.06;}
+
+/* ═══ CHART ═══ */
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:15px 18px;margin-bottom:18px;}
+.chart-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.chart-ttl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.chart-ttl::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.bars{display:flex;align-items:flex-end;gap:5px;height:100px;position:relative;padding-bottom:22px;}
+.bars::after{content:'';position:absolute;bottom:22px;left:0;right:0;height:1px;background:var(--border);}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bb{width:100%;border-radius:3px 3px 0 0;min-height:2px;background:linear-gradient(180deg,var(--accent) 0%,var(--accent2) 100%);cursor:pointer;position:relative;transition:opacity .15s;}
+.bb:hover{opacity:.75;}
+.bb:hover::after{content:attr(data-t);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:9px;white-space:nowrap;color:var(--text);font-family:'IBM Plex Mono',monospace;z-index:10;}
+.bl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);text-align:center;line-height:1.3;}
+
+/* ═══ FORM ═══ */
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:15px 18px;margin-bottom:18px;}
+.form-ttl{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.form-ttl::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--green);}
+.form-grid{display:grid;grid-template-columns:130px 1fr 1fr 95px 90px auto;gap:9px;align-items:end;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:'IBM Plex Mono',monospace;}
+.inp{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s;width:100%;}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(245,158,11,.06);}
+.inp option{background:var(--card);}
+.btn-log{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#0a0e16;border:none;border-radius:7px;padding:9px 14px;
+  font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;
+  letter-spacing:1px;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.btn-log:hover{opacity:.9;transform:translateY(-1px);}
+
+/* ═══ FILTER BAR ═══ */
+.fbar{display:flex;gap:7px;align-items:center;margin-bottom:11px;flex-wrap:wrap;}
+.srch-wrap{position:relative;flex:1;min-width:150px;}
+.srch-wrap .si{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
+.srch-wrap .inp{padding-left:28px;font-size:12px;}
+.fsel{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:7px 9px;color:var(--dim);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;transition:border-color .15s;}
+.fsel:focus{border-color:var(--accent);}
+.fsel option{background:var(--card);}
+.drange{display:flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:5px 8px;}
+.drange span{font-size:9px;color:var(--muted);}
+.drange input[type=date]{background:none;border:none;color:var(--dim);font-size:10px;font-family:'IBM Plex Mono',monospace;outline:none;cursor:pointer;}
+.drange input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);}
+.cnt{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;white-space:nowrap;}
+.cnt b{color:var(--accent);}
+
+/* ═══ TABLE ═══ */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:rgba(255,255,255,.015);padding:9px 13px;text-align:left;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;cursor:pointer;user-select:none;white-space:nowrap;transition:color .13s;}
+thead th:hover{color:var(--accent);}
+thead th.sorted{color:var(--accent);}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.02);transition:background .1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--hover);}
+tbody td{padding:9px 13px;font-size:12px;}
+.td-date{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);white-space:nowrap;}
+.otag{display:inline-block;padding:2px 7px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.5px;}
+.t15w40{background:rgba(245,158,11,.14);color:var(--accent);}
+.toil90{background:rgba(59,130,246,.14);color:var(--blue);}
+.ts40{background:rgba(6,182,212,.14);color:var(--cyan);}
+.tatf{background:rgba(167,139,250,.14);color:var(--purple);}
+.tt32{background:rgba(34,197,94,.14);color:var(--green);}
+.toil68{background:rgba(249,115,22,.14);color:var(--orange);}
+.tcool{background:rgba(99,102,241,.14);color:#818cf8;}
+.tother{background:rgba(100,116,139,.14);color:var(--dim);}
+.stag{font-size:9px;padding:2px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-weight:700;margin-left:4px;}
+.s203t{background:rgba(59,130,246,.14);color:var(--blue);}
+.shmd{background:rgba(167,139,250,.14);color:var(--purple);}
+.vv{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;}
+.vu{font-size:10px;color:var(--muted);}
+.btn-d{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:var(--red);border-radius:5px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;transition:all .13s;font-family:'Barlow',sans-serif;}
+.btn-d:hover{background:rgba(239,68,68,.18);}
+.empty-st{text-align:center;padding:36px 20px;}
+.empty-st .ei{font-size:32px;margin-bottom:8px;opacity:.3;}
+.empty-st p{font-size:11px;color:var(--muted);}
+.pager{display:flex;align-items:center;justify-content:center;gap:3px;padding:10px;border-top:1px solid var(--border);}
+.pgb{min-width:26px;height:26px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;}
+.pgb:hover{border-color:var(--accent);color:var(--accent);}
+.pgb.cur{background:var(--accent);border-color:var(--accent);color:#0a0e16;font-weight:700;}
+
+/* ═══ TOAST ═══ */
+.toast{position:fixed;bottom:16px;right:16px;z-index:500;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:9px;font-size:12px;min-width:210px;max-width:340px;box-shadow:var(--shadow);transform:translateY(60px) scale(.95);opacity:0;transition:all .25s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+.toast.on{transform:translateY(0) scale(1);opacity:1;pointer-events:auto;}
+#tMsg{line-height:1.4;}
+
+/* ═══ OVERLAY / MODAL ═══ */
+.ov{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+.ov.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:22px 24px;width:500px;max-width:96vw;max-height:90vh;overflow-y:auto;animation:mIn .18s ease;box-shadow:var(--shadow);}
+.modal.lg{width:680px;}
+.modal.xl{width:780px;}
+@keyframes mIn{from{opacity:0;transform:scale(.94) translateY(10px);}}
+.m-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.m-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.m-title .hi{color:var(--accent);}
+.m-close{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.05);border:none;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .13s;}
+.m-close:hover{background:rgba(255,255,255,.1);color:var(--text);}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mfg{display:flex;flex-direction:column;gap:5px;}
+.mfg label,.fg-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:'IBM Plex Mono',monospace;}
+.mfg.full{grid-column:span 2;}
+.mfoot{display:flex;gap:7px;justify-content:flex-end;margin-top:18px;}
+.btn-c{background:var(--panel);border:1px solid var(--border);color:var(--dim);border-radius:7px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .13s;}
+.btn-c:hover{border-color:var(--dim);color:var(--text);}
+.btn-g{background:linear-gradient(135deg,var(--green),var(--green2));color:white;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:opacity .13s;}
+.btn-b{background:linear-gradient(135deg,var(--blue),var(--blue2));color:white;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:opacity .13s;}
+.btn-a{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0a0e16;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:opacity .13s;}
+.btn-g:hover,.btn-b:hover,.btn-a:hover{opacity:.88;}
+
+/* ═══ SETTINGS ═══ */
+.sets-section{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:13px 15px;margin-bottom:12px;}
+.sets-section h4{font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;font-family:'IBM Plex Mono',monospace;margin-bottom:11px;display:flex;align-items:center;gap:6px;}
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.set-row:last-child{border-bottom:none;}
+.set-lbl{font-size:12px;color:var(--text);}
+.set-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.set-inp{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none;width:88px;text-align:right;transition:border-color .14s;}
+.set-inp:focus{border-color:var(--accent);}
+.set-rmv{background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:3px 6px;border-radius:4px;transition:background .13s;}
+.set-rmv:hover{background:rgba(239,68,68,.1);}
+.set-add{display:flex;gap:7px;margin-top:10px;}
+
+/* ═══ GITHUB MODAL ═══ */
+.gh-status{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+.gh-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.gh-row:last-child{margin-bottom:0;}
+.gh-icon{font-size:15px;}
+.gh-text{font-size:12px;color:var(--text);}
+.gh-text b{color:var(--accent);}
+.gh-text small{font-size:10px;color:var(--muted);display:block;margin-top:2px;}
+.gh-warn{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:7px;padding:10px 12px;font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:14px;}
+.gh-warn b{color:var(--accent);}
+.gh-steps{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+.gh-steps h4{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:'IBM Plex Mono',monospace;margin-bottom:9px;}
+.gh-step{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.gh-step:last-child{border-bottom:none;}
+.gh-step .num{width:18px;height:18px;border-radius:50%;background:rgba(59,130,246,.15);color:var(--blue);font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.gh-step p{font-size:11px;color:var(--dim);line-height:1.5;}
+.gh-step a{color:var(--blue);text-decoration:none;}
+.gh-step a:hover{text-decoration:underline;}
+.connected-info{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:7px;padding:10px 12px;margin-bottom:14px;}
+.ci-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:5px;}
+.ci-row:last-child{margin-bottom:0;}
+.ci-lbl{color:var(--muted);}
+.ci-val{font-family:'IBM Plex Mono',monospace;color:var(--green);font-weight:600;}
+
+/* ═══ EXCEL MODAL ═══ */
+.xls-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;}
+.xls-mb{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:7px;font-size:10px;font-weight:600;cursor:pointer;text-align:center;transition:all .13s;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.xls-mb:hover{border-color:var(--blue);color:var(--blue);}
+.xls-mb.sel{background:rgba(59,130,246,.12);border-color:var(--blue);color:var(--blue);}
+.xls-mb.has-data::after{content:'●';font-size:7px;margin-left:3px;color:var(--accent);}
+.xls-preview{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:11px;color:var(--dim);line-height:1.9;}
+.xls-preview b{color:var(--text);font-size:12px;}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:960px){
+  .layout{grid-template-columns:1fr;height:auto;}
+  .sidebar{height:auto;border-right:none;border-bottom:1px solid var(--border);}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .form-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ TOPBAR ════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🛢</div>
+    <div class="logo-text">
+      <h1>OIL MANAGER <span style="color:var(--accent);font-size:12px">v3</span></h1>
+      <small id="stationLabel">WALID OS · BRS-203</small>
+    </div>
+  </div>
+
+  <div class="topbar-center">
+    <button class="tbtn c-green" onclick="openRecv('general')">📥 <span class="btn-txt">Receive</span></button>
+    <button class="tbtn c-blue"   onclick="openRecv('203')">🔵 <span class="btn-txt">BRS-203</span></button>
+    <button class="tbtn c-purple" onclick="openRecv('hmd')">🟣 <span class="btn-txt">HMD</span></button>
+    <button class="tbtn c-orange" onclick="openXls()">📊 <span class="btn-txt">Excel</span></button>
+    <button class="tbtn" onclick="openSettings()">⚙️ <span class="btn-txt">Settings</span></button>
+  </div>
+
+  <div class="topbar-right">
+    <div class="backup-pill no-folder" id="backupPill" onclick="handleBackupPillClick()" title="Auto-backup to folder">
+      <span id="backupIcon">💾</span>
+      <span id="backupLabel" class="backup-lbl">Backup: Off</span>
+    </div>
+    <div class="sync-pill disconnected" id="syncPill" onclick="openGithub()" title="GitHub Sync">
+      <div class="sync-dot"></div>
+      <span id="syncLabel" class="sync-pill-lbl">Not connected</span>
+    </div>
+    <button class="tbtn c-blue syncBtn-desktop" onclick="syncToGithub()" id="syncBtn" style="display:none">☁️ <span class="btn-txt">Save</span></button>
+    <button class="tbtn c-green syncBtn-desktop" onclick="pullFromGithub()" id="pullBtn" style="display:none">⬇️</button>
+    <button class="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode">
+      <span class="theme-icon" id="themeIcon">🌙</span>
+      <span id="themeLabel" class="btn-txt"> Dark</span>
+    </button>
+    <button class="tbtn" onclick="exportJSON()" title="Export backup">📤</button>
+    <label class="tbtn" style="cursor:pointer" title="Import backup">📂<input type="file" id="importFile" style="display:none" accept=".json" onchange="importJSON(event)"></label>
+    <div class="reset-wrap">
+      <input type="checkbox" id="lockCb" onchange="toggleReset()">
+      <label for="lockCb" style="font-size:10px;color:var(--muted);cursor:pointer;">🔓</label>
+      <button id="resetBtn" class="tbtn c-red" onclick="doReset()" title="Reset all data">🗑</button>
+    </div>
+
+    <!-- Hamburger — visible on small screens only -->
+    <div class="tb-menu-wrap">
+      <button class="tb-menu-btn" id="menuBtn" onclick="toggleTbMenu()">☰</button>
+      <div class="tb-dropdown" id="tbDropdown">
+        <div class="dd-sec">
+          <div class="dd-lbl">Receive Stock</div>
+          <button class="dd-item c-green" onclick="openRecv('general');closeTbMenu()"><span class="di">📥</span>Receive (General)</button>
+          <button class="dd-item c-blue"  onclick="openRecv('203');closeTbMenu()"><span class="di">🔵</span>From BRS-203</button>
+          <button class="dd-item c-purple" onclick="openRecv('hmd');closeTbMenu()"><span class="di">🟣</span>From HMD</button>
+        </div>
+        <div class="dd-sec">
+          <div class="dd-lbl">Reports & Tools</div>
+          <button class="dd-item c-orange" onclick="openXls();closeTbMenu()"><span class="di">📊</span>Excel Report</button>
+          <button class="dd-item c-amber" onclick="openSettings();closeTbMenu()"><span class="di">⚙️</span>Settings</button>
+        </div>
+        <div class="dd-sec">
+          <div class="dd-lbl">Sync & Backup</div>
+          <button class="dd-item c-blue" onclick="openGithub();closeTbMenu()"><span class="di">🐙</span>GitHub Sync</button>
+          <button class="dd-item c-blue" onclick="syncToGithub();closeTbMenu()"><span class="di">☁️</span>Save Online</button>
+          <button class="dd-item c-green" onclick="pullFromGithub();closeTbMenu()"><span class="di">⬇️</span>Pull from GitHub</button>
+          <button class="dd-item" onclick="handleBackupPillClick();closeTbMenu()"><span class="di">💾</span>Auto-backup Folder</button>
+        </div>
+        <div class="dd-sec">
+          <div class="dd-lbl">File</div>
+          <button class="dd-item" onclick="exportJSON();closeTbMenu()"><span class="di">📤</span>Export Backup</button>
+          <label class="dd-item" style="cursor:pointer"><span class="di">📂</span>Import Backup<input type="file" style="display:none" accept=".json" onchange="importJSON(event);closeTbMenu()"></label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ LAYOUT ════════════ -->
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="sec-lbl">Stock Levels</div>
+    <div id="stockCards"></div>
+
+    <div class="sec-lbl">BRS-203 — This Month</div>
+    <div class="src-card c203">
+      <div class="src-hdr">
+        <div class="src-title">🔵 From BRS-203</div>
+        <div class="src-month" id="srcMonthLabel"></div>
+      </div>
+      <div id="list203"></div>
+      <div class="src-total">
+        <span>TOTAL RECEIVED</span>
+        <b id="total203" style="color:var(--blue)">0.0 L</b>
+      </div>
+    </div>
+
+    <div class="sec-lbl">HMD — This Month</div>
+    <div class="src-card chmd">
+      <div class="src-hdr">
+        <div class="src-title">🟣 From HMD</div>
+      </div>
+      <div id="listHMD"></div>
+      <div class="src-total">
+        <span>TOTAL RECEIVED</span>
+        <b id="totalHMD" style="color:var(--purple)">0.0 L</b>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Quick Receive</div>
+    <div class="qr-form">
+      <select class="inp-s" id="qrOil"></select>
+      <input type="number" class="inp-s" id="qrVol" placeholder="Volume (L)" step="0.5" min="0">
+      <button class="btn-qr" onclick="quickRecv()">+ Add to Stock</button>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- Stats -->
+    <div class="stat-grid" id="statGrid"></div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="chart-hdr">
+        <div class="chart-ttl">Monthly Consumption (L)</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <select class="fsel" id="chartOil" onchange="renderChart()" style="font-size:10px;padding:4px 7px;">
+            <option value="">All Oils</option>
+          </select>
+          <select class="fsel" id="chartYear" onchange="renderChart()" style="font-size:10px;padding:4px 7px;"></select>
+        </div>
+      </div>
+      <div class="bars" id="bars"></div>
+    </div>
+
+    <!-- Log Form -->
+    <div class="form-card">
+      <div class="form-ttl">Log Consumption Entry</div>
+      <div class="form-grid">
+        <div class="fg"><label>Date</label><input type="date" class="inp" id="fDate"></div>
+        <div class="fg"><label>Oil Type</label><select class="inp" id="fOil"></select></div>
+        <div class="fg"><label>Equipment</label><select class="inp" id="fEquip"></select></div>
+        <div class="fg"><label>Volume (L)</label><input type="number" class="inp" id="fVol" placeholder="0.0" step="0.5" min="0.1"></div>
+        <div class="fg"><label>Source</label>
+          <select class="inp" id="fSrc">
+            <option value="">— General —</option>
+            <option value="203">BRS-203</option>
+            <option value="hmd">HMD</option>
+          </select>
+        </div>
+        <button class="btn-log" onclick="addEntry()">＋ LOG</button>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="fbar">
+      <div class="srch-wrap">
+        <span class="si">🔍</span>
+        <input type="text" class="inp srch-wrap" id="srchQ" placeholder="Search…" oninput="applyFilters()" style="padding-left:27px;font-size:12px;">
+      </div>
+      <select class="fsel" id="fltOil" onchange="applyFilters()"><option value="">All Oils</option></select>
+      <select class="fsel" id="fltEquip" onchange="applyFilters()"><option value="">All Equipment</option></select>
+      <select class="fsel" id="fltSrc" onchange="applyFilters()">
+        <option value="">All Sources</option>
+        <option value="203">BRS-203</option>
+        <option value="hmd">HMD</option>
+      </select>
+      <div class="drange">
+        <span>From</span><input type="date" id="dFrom" onchange="applyFilters()">
+        <span>To</span><input type="date" id="dTo" onchange="applyFilters()">
+      </div>
+      <button class="tbtn" onclick="clearFilters()" style="padding:5px 9px;font-size:10px;">✕</button>
+      <div class="cnt" id="cntBadge"><b>0</b> entries</div>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sortBy('date')" id="th-date">Date ↕</th>
+          <th onclick="sortBy('type')" id="th-type">Oil Type ↕</th>
+          <th onclick="sortBy('equip')" id="th-equip">Equipment ↕</th>
+          <th onclick="sortBy('vol')" id="th-vol">Volume ↕</th>
+          <th>Source</th>
+          <th>Action</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="emptyState" class="empty-st" style="display:none">
+        <div class="ei">🔍</div><p>No entries match your filters.</p>
+      </div>
+      <div class="pager" id="pager"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════ RECEIVE MODAL ══════════ -->
+<div class="ov" id="recvModal">
+  <div class="modal">
+    <div class="m-hdr">
+      <div class="m-title">📥 <span class="hi" id="recvTitle">Receive Stock</span></div>
+      <button class="m-close" onclick="closeM('recvModal')">✕</button>
+    </div>
+    <div class="mgrid">
+      <div class="mfg"><label>Oil Type</label><select class="inp" id="rv-oil"></select></div>
+      <div class="mfg"><label>Volume (L)</label><input type="number" class="inp" id="rv-vol" placeholder="0.0" step="0.5" min="0"></div>
+      <div class="mfg"><label>Date</label><input type="date" class="inp" id="rv-date"></div>
+      <div class="mfg"><label>Source</label><input type="text" class="inp" id="rv-src-lbl" readonly style="color:var(--dim);font-size:12px;"></div>
+      <div class="mfg full"><label>Note (optional)</label><input type="text" class="inp" id="rv-note" placeholder="e.g. Batch #5, PO-2025-001"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" onclick="closeM('recvModal')">Cancel</button>
+      <button class="btn-g" onclick="confirmRecv()">✓ Confirm Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ GITHUB MODAL ══════════ -->
+<div class="ov" id="githubModal">
+  <div class="modal lg">
+    <div class="m-hdr">
+      <div class="m-title">🐙 <span class="hi">GitHub Gist Sync</span></div>
+      <button class="m-close" onclick="closeM('githubModal')">✕</button>
+    </div>
+
+    <div id="ghConnectedInfo" style="display:none" class="connected-info">
+      <div class="ci-row"><span class="ci-lbl">Status</span><span class="ci-val">✅ Connected</span></div>
+      <div class="ci-row"><span class="ci-lbl">Gist ID</span><span class="ci-val" id="ghGistDisplay">—</span></div>
+      <div class="ci-row"><span class="ci-lbl">Last sync</span><span class="ci-val" id="ghLastSync">Never</span></div>
+    </div>
+
+    <div class="gh-warn">
+      <b>⚠️ Security note:</b> Your Personal Access Token is stored <b>only in your browser's localStorage</b> on this device. It never leaves your machine except to communicate directly with the GitHub API. Use a token with <b>gist</b> scope only.
+    </div>
+
+    <div class="gh-steps">
+      <h4>Setup Instructions</h4>
+      <div class="gh-step"><div class="num">1</div><p>Go to <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a><br>Create a token with <b>gist</b> scope only. Copy it.</p></div>
+      <div class="gh-step"><div class="num">2</div><p>Paste the token below and click <b>Connect</b>. A private Gist will be created automatically to store your data.</p></div>
+      <div class="gh-step"><div class="num">3</div><p>Use <b>☁️ Save Online</b> to push data to GitHub, and <b>⬇️ Pull</b> to restore data on another device.</p></div>
+    </div>
+
+    <div class="mgrid">
+      <div class="mfg full"><label>Personal Access Token (gist scope)</label>
+        <div style="display:flex;gap:7px;">
+          <input type="password" class="inp" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+          <button class="tbtn" onclick="toggleTokenVis()" id="tokenEye" style="flex-shrink:0;">👁</button>
+        </div>
+      </div>
+      <div class="mfg full"><label>Gist ID (leave blank to auto-create)</label>
+        <input type="text" class="inp" id="ghGistId" placeholder="Will be filled automatically after first connect" style="font-family:'IBM Plex Mono',monospace;font-size:12px;">
+      </div>
+    </div>
+
+    <div class="mfoot">
+      <button class="btn-c" onclick="disconnectGithub()" id="ghDisconnectBtn" style="display:none;">Disconnect</button>
+      <button class="btn-c" onclick="closeM('githubModal')">Close</button>
+      <button class="btn-b" onclick="connectGithub()">🔗 Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ EXCEL MODAL ══════════ -->
+<div class="ov" id="xlsModal">
+  <div class="modal lg">
+    <div class="m-hdr">
+      <div class="m-title">📊 <span class="hi">Monthly Excel Report</span></div>
+      <button class="m-close" onclick="closeM('xlsModal')">✕</button>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+      <div class="mfg"><label class="fg-lbl">Year</label><select class="inp" id="xlsYear" onchange="buildXlsMonths()" style="width:100px;"></select></div>
+    </div>
+    <div class="xls-grid" id="xlsMonths"></div>
+    <div class="xls-preview">
+      <b>Report Contents (4 sheets):</b><br>
+      📋 <b>Summary</b> — Stock opening/closing, consumed, received per source, daily rate, days left<br>
+      📅 <b>Daily Log</b> — All consumption entries with equipment & source<br>
+      🔧 <b>Equipment Stats</b> — Consumption per equipment + rate per entry<br>
+      📦 <b>Supply Records</b> — All receipts from BRS-203 / HMD / General
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" onclick="closeM('xlsModal')">Cancel</button>
+      <button class="btn-b" onclick="doExcelExport()">📥 Download Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SETTINGS MODAL ══════════ -->
+<div class="ov" id="settingsModal">
+  <div class="modal xl">
+    <div class="m-hdr">
+      <div class="m-title">⚙️ <span class="hi">Settings</span></div>
+      <button class="m-close" onclick="closeM('settingsModal')">✕</button>
+    </div>
+
+    <!-- Station name -->
+    <div class="sets-section">
+      <h4>🏭 Station Info</h4>
+      <div class="set-row">
+        <div><div class="set-lbl">Station Name</div></div>
+        <input type="text" class="set-inp" id="s-station" placeholder="BRS-203" style="width:160px;">
+      </div>
+    </div>
+
+    <!-- Initial Stock -->
+    <div class="sets-section">
+      <h4>📦 Initial Stock (L) — Opening Balance per Oil Type</h4>
+      <div id="s-initStock"></div>
+    </div>
+
+    <!-- Alert thresholds -->
+    <div class="sets-section">
+      <h4>⚠️ Low Stock Alert Threshold (L)</h4>
+      <div id="s-alerts"></div>
+    </div>
+
+    <!-- Max capacity -->
+    <div class="sets-section">
+      <h4>📊 Max Capacity (L) — for progress bar</h4>
+      <div id="s-max"></div>
+    </div>
+
+    <!-- Oil types -->
+    <div class="sets-section">
+      <h4>🛢️ Oil Types</h4>
+      <div id="s-oils"></div>
+      <div class="set-add">
+        <input type="text" class="inp" id="newOilName" placeholder="Oil type name" style="flex:1;font-size:12px;">
+        <input type="number" class="inp" id="newOilInit" placeholder="Initial stock (L)" style="width:130px;font-size:12px;">
+        <button class="btn-g" onclick="addOilType()" style="padding:8px 12px;font-size:12px;">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Equipment -->
+    <div class="sets-section">
+      <h4>🔧 Equipment List</h4>
+      <div id="s-equip"></div>
+      <div class="set-add">
+        <input type="text" class="inp" id="newEquipName" placeholder="Equipment name" style="flex:1;font-size:12px;">
+        <button class="btn-g" onclick="addEquipment()" style="padding:8px 12px;font-size:12px;">+ Add</button>
+      </div>
+    </div>
+
+    <div class="mfoot">
+      <button class="btn-c" onclick="closeM('settingsModal')">Close</button>
+      <button class="btn-a" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ BACKUP FOLDER MODAL ══════════ -->
+<div class="ov" id="backupModal">
+  <div class="modal">
+    <div class="m-hdr">
+      <div class="m-title">💾 <span class="hi">Auto-Backup to Folder</span></div>
+      <button class="m-close" onclick="closeM('backupModal')">✕</button>
+    </div>
+
+    <div id="bk-no-support" style="display:none">
+      <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:14px;font-size:12px;color:var(--dim);line-height:1.7;margin-bottom:14px;">
+        <b style="color:var(--red);">⚠️ Not supported in this browser.</b><br>
+        File System Access API requires <b>Chrome</b> or <b>Edge</b> (desktop).<br>
+        Firefox and Safari do not support automatic folder writing.
+      </div>
+    </div>
+
+    <div id="bk-main">
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--dim);line-height:1.8;">
+        <b style="color:var(--text);font-size:13px;">🔄 How it works:</b><br>
+        ① Choose a folder on your computer (e.g. <code style="font-family:'IBM Plex Mono',monospace;background:var(--card);padding:1px 5px;border-radius:3px;">D:\OilManager\Backups</code>)<br>
+        ② Every time you make a change, a file <code style="font-family:'IBM Plex Mono',monospace;background:var(--card);padding:1px 5px;border-radius:3px;">oil_data.json</code> is saved there automatically<br>
+        ③ When you reopen the app, it reads the file and restores your data<br>
+        ④ The browser will ask for permission once per session
+      </div>
+
+      <div id="bk-status-box" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+          <span style="color:var(--muted);">Selected folder</span>
+          <span id="bk-folder-name" style="font-family:'IBM Plex Mono',monospace;color:var(--dim);">None selected</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-top:6px;">
+          <span style="color:var(--muted);">Last backup</span>
+          <span id="bk-last-time" style="font-family:'IBM Plex Mono',monospace;color:var(--dim);">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-top:6px;">
+          <span style="color:var(--muted);">Backup file</span>
+          <span style="font-family:'IBM Plex Mono',monospace;color:var(--dim);">oil_data.json</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mfoot">
+      <button class="btn-c" id="bk-forget-btn" onclick="forgetFolder()" style="display:none;">Forget Folder</button>
+      <button class="btn-c" onclick="closeM('backupModal')">Close</button>
+      <button class="btn-b" id="bk-choose-btn" onclick="chooseFolder()">📁 Choose Folder</button>
+      <button class="btn-g" id="bk-restore-btn" onclick="manualRestoreFromFolder()" style="display:none;">⬇️ Restore from Folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="tIcon" style="font-size:16px;">✅</span>
+  <span id="tMsg">Done</span>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  DEFAULTS — all zeros for clean start
+// ══════════════════════════════════════════════════════════
+const OILS_DEF   = ["15W40","OIL 90","S 40","ATF","TESKA 32","OIL 68","COOLANT"];
+const EQUIP_DEF  = ["Unit Engine DS","Unit Engine PS","Generator 1","Generator 2","C Pump 1","C Pump 2","WHCP","Toyota","Gear Box DS","Gear Box PS","Triplex DS","Triplex PS","Twin Pump","Loan to 203"];
+const INV_DEF    = () => Object.fromEntries(OILS_DEF.map(o=>[o,0]));
+const INIT_DEF   = () => Object.fromEntries(OILS_DEF.map(o=>[o,0]));
+const ALERT_DEF  = () => Object.fromEntries(OILS_DEF.map(o=>[o,5]));
+const MAX_DEF    = {"15W40":200,"OIL 90":200,"S 40":200,"ATF":50,"TESKA 32":100,"OIL 68":60,"COOLANT":20};
+
+const OIL_TAGS = {"15W40":"t15w40","OIL 90":"toil90","S 40":"ts40","ATF":"tatf","TESKA 32":"tt32","OIL 68":"toil68","COOLANT":"tcool"};
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let inv      = ld('wos3_inv',      INV_DEF());
+let initStock= ld('wos3_init',     INIT_DEF());
+let logs     = ld('wos3_logs',     []);
+let recpts   = ld('wos3_recpts',   []);
+let alerts   = ld('wos3_alerts',   ALERT_DEF());
+let maxInv   = ld('wos3_max',      {...MAX_DEF});
+let oilTypes = ld('wos3_oils',     [...OILS_DEF]);
+let equipList= ld('wos3_equip',    [...EQUIP_DEF]);
+let station  = ld('wos3_station',  'BRS-203');
+let ghToken  = ld('wos3_ghtoken',  '');
+let ghGistId = ld('wos3_ghgist',   '');
+let ghLastSync=ld('wos3_ghsync',   '');
+
+let filtered=[],sortCol='date',sortDir=-1,page=1;
+const PER=20;
+let recvSrc='general';
+let xlsMonthSel=null;
+
+function ld(k,def){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):def;}catch{return def;}}
+function sv(){
+  const d={inv,initStock,logs,recpts,alerts,maxInv,oilTypes,equipList,station};
+  ['wos3_inv','wos3_init','wos3_logs','wos3_recpts','wos3_alerts','wos3_max','wos3_oils','wos3_equip','wos3_station'].forEach((k,i)=>{
+    localStorage.setItem(k,JSON.stringify(Object.values(d)[i]));
+  });
+  if(ghToken) localStorage.setItem('wos3_ghtoken',JSON.stringify(ghToken));
+  if(ghGistId) localStorage.setItem('wos3_ghgist',JSON.stringify(ghGistId));
+  if(ghLastSync) localStorage.setItem('wos3_ghsync',JSON.stringify(ghLastSync));
+  // Auto-backup to folder (non-blocking)
+  if(folderHandle) writeBackupFile();
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+let isDark = ld('wos3_theme','dark') !== 'light';
+
+function init(){
+  applyTheme(isDark);
+  document.getElementById('fDate').valueAsDate=new Date();
+  document.getElementById('rv-date').valueAsDate=new Date();
+  document.getElementById('stationLabel').textContent=`WALID OS · ${station}`;
+  buildAllSelects();
+  updateGithubUI();
+  initFileBackup();
+  render();
+}
+
+function render(){
+  renderStock();
+  renderSourceCards();
+  renderStats();
+  renderChart();
+  applyFilters();
+}
+
+// ══════════════════════════════════════════════════════════
+//  SELECTS
+// ══════════════════════════════════════════════════════════
+function buildAllSelects(){
+  fillOilSelects();
+  fillEquipSelects();
+  fillEquipFilter();
+}
+
+function fillOilSelects(){
+  ['fOil','qrOil','rv-oil','fltOil','chartOil'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const cur=el.value;
+    el.innerHTML=(id==='fltOil'||id==='chartOil')?'<option value="">All Oils</option>':'';
+    oilTypes.forEach(o=>el.appendChild(new Option(o,o)));
+    if(cur)el.value=cur;
+  });
+}
+
+function fillEquipSelects(){
+  const el=document.getElementById('fEquip'); if(!el)return;
+  const cur=el.value; el.innerHTML='';
+  equipList.forEach(e=>el.appendChild(new Option(e,e)));
+  if(cur)el.value=cur;
+}
+
+function fillEquipFilter(){
+  const el=document.getElementById('fltEquip'); if(!el)return;
+  const cur=el.value;
+  el.innerHTML='<option value="">All Equipment</option>';
+  const used=[...new Set(logs.map(l=>l.equip))].sort();
+  used.forEach(e=>el.appendChild(new Option(e,e)));
+  if(cur)el.value=cur;
+}
+
+// ══════════════════════════════════════════════════════════
+//  STOCK SIDEBAR
+// ══════════════════════════════════════════════════════════
+function renderStock(){
+  const w=document.getElementById('stockCards');
+  w.innerHTML=oilTypes.map(oil=>{
+    const vol=inv[oil]||0;
+    const thr=alerts[oil]||5;
+    const max=maxInv[oil]||200;
+    const pct=Math.min(100,(vol/max)*100);
+    const empty=vol<=0, low=!empty&&vol<thr;
+    const cls=empty?'empty':low?'low':'';
+    const badge=empty?'<span class="sc-badge empty-b">EMPTY</span>':low?'<span class="sc-badge low-b">LOW</span>':'<span class="sc-badge ok">OK</span>';
+    return`<div class="stock-card ${cls}" onclick="qkSelectOil('${oil}')">
+      <div class="sc-row"><div class="sc-name">${oil}</div>${badge}</div>
+      <div class="sc-vol">${vol.toFixed(1)}<span> L</span></div>
+      <div class="sc-bar"><div class="sc-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function qkSelectOil(o){
+  document.getElementById('fOil').value=o;
+  document.getElementById('qrOil').value=o;
+  document.getElementById('fVol').focus();
+}
+
+// ══════════════════════════════════════════════════════════
+//  SOURCE CARDS
+// ══════════════════════════════════════════════════════════
+function renderSourceCards(){
+  const now=new Date();
+  const mo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('srcMonthLabel').textContent=`${MO[now.getMonth()]} ${now.getFullYear()}`;
+
+  ['203','hmd'].forEach(src=>{
+    const items=recpts.filter(r=>r.source===src&&r.date&&r.date.startsWith(mo));
+    const byOil={};
+    items.forEach(r=>{byOil[r.oil]=(byOil[r.oil]||0)+r.vol;});
+    const total=items.reduce((s,r)=>s+r.vol,0);
+    const listId=src==='203'?'list203':'listHMD';
+    const totId=src==='203'?'total203':'totalHMD';
+    const lEl=document.getElementById(listId);
+    const tEl=document.getElementById(totId);
+    if(!Object.keys(byOil).length){
+      lEl.innerHTML='<div class="src-empty">No receipts this month</div>';
+    } else {
+      lEl.innerHTML=Object.entries(byOil).map(([oil,v])=>`
+        <div class="src-row"><span class="src-oil">${oil}</span><span class="src-v">${v.toFixed(1)} L</span></div>`).join('');
+    }
+    tEl.textContent=`${total.toFixed(1)} L`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  STATS
+// ══════════════════════════════════════════════════════════
+function renderStats(){
+  const totalLogs=logs.length;
+  const totalVol=logs.reduce((s,l)=>s+(+l.vol),0);
+  const byOil={};
+  logs.forEach(l=>{byOil[l.type]=(byOil[l.type]||0)+(+l.vol);});
+  const topOil=Object.entries(byOil).sort((a,b)=>b[1]-a[1])[0];
+  const lowCnt=oilTypes.filter(o=>(inv[o]||0)<(alerts[o]||5)).length;
+  const totalRecv=recpts.reduce((s,r)=>s+r.vol,0);
+  const recv203=recpts.filter(r=>r.source==='203').reduce((s,r)=>s+r.vol,0);
+  const recvHMD=recpts.filter(r=>r.source==='hmd').reduce((s,r)=>s+r.vol,0);
+  const now=new Date();
+  const mo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const daysInMo=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const moVol=logs.filter(l=>l.date&&l.date.startsWith(mo)).reduce((s,l)=>s+(+l.vol),0);
+  const dailyRate=(moVol/now.getDate()).toFixed(2);
+
+  document.getElementById('statGrid').innerHTML=`
+    <div class="stat s-a"><div class="stat-lbl">Total Entries</div><div class="stat-val">${totalLogs}</div><div class="stat-sub">Consumption logs</div><div class="stat-icon">📋</div></div>
+    <div class="stat s-b"><div class="stat-lbl">Total Consumed</div><div class="stat-val">${totalVol.toFixed(1)}<small> L</small></div><div class="stat-sub">All oil types</div><div class="stat-icon">🛢</div></div>
+    <div class="stat s-c"><div class="stat-lbl">Top Oil</div><div class="stat-val" style="font-size:18px">${topOil?topOil[0]:'—'}</div><div class="stat-sub">${topOil?topOil[1].toFixed(1)+' L consumed':'No logs'}</div><div class="stat-icon">🏆</div></div>
+    <div class="stat s-d"><div class="stat-lbl">Low Alerts</div><div class="stat-val" style="color:${lowCnt>0?'var(--red)':'var(--green)'}">${lowCnt}</div><div class="stat-sub">${lowCnt>0?'Need restocking':'All levels OK'}</div><div class="stat-icon">⚠️</div></div>
+    <div class="stat s-e"><div class="stat-lbl">From BRS-203</div><div class="stat-val" style="color:var(--blue)">${recv203.toFixed(1)}<small> L</small></div><div class="stat-sub">Total received</div><div class="stat-icon">🔵</div></div>
+    <div class="stat s-f"><div class="stat-lbl">From HMD</div><div class="stat-val" style="color:var(--purple)">${recvHMD.toFixed(1)}<small> L</small></div><div class="stat-sub">Total received</div><div class="stat-icon">🟣</div></div>
+    <div class="stat s-a"><div class="stat-lbl">This Month</div><div class="stat-val">${moVol.toFixed(1)}<small> L</small></div><div class="stat-sub">${mo}</div><div class="stat-icon">📅</div></div>
+    <div class="stat s-b"><div class="stat-lbl">Daily Rate</div><div class="stat-val">${dailyRate}<small> L/d</small></div><div class="stat-sub">Current month avg</div><div class="stat-icon">📈</div></div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHART
+// ══════════════════════════════════════════════════════════
+function renderChart(){
+  const oilF=document.getElementById('chartOil').value;
+  const yrF=document.getElementById('chartYear').value;
+  // Build year list
+  const years=[...new Set(logs.map(l=>l.date?l.date.slice(0,4):null).filter(Boolean))].sort();
+  if(!years.length)years.push(String(new Date().getFullYear()));
+  const yrEl=document.getElementById('chartYear');
+  const curYr=yrEl.value||years[years.length-1];
+  yrEl.innerHTML=years.map(y=>`<option value="${y}" ${y===curYr?'selected':''}>${y}</option>`).join('');
+
+  const byMonth={};
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  MO.forEach((_,i)=>{ const k=`${curYr}-${String(i+1).padStart(2,'0')}`; byMonth[k]=0; });
+  logs.forEach(l=>{
+    if(!l.date||!l.date.startsWith(curYr))return;
+    if(oilF&&l.type!==oilF)return;
+    const k=l.date.slice(0,7);
+    byMonth[k]=(byMonth[k]||0)+(+l.vol);
+  });
+  const keys=Object.keys(byMonth).sort();
+  const max=Math.max(...Object.values(byMonth),1);
+  const barsEl=document.getElementById('bars');
+  barsEl.innerHTML=keys.map(k=>{
+    const h=Math.round((byMonth[k]/max)*88);
+    const mo=MO[parseInt(k.split('-')[1])-1];
+    return`<div class="bc">
+      <div class="bb" style="height:${Math.max(h,byMonth[k]>0?3:1)}px" data-t="${k}: ${byMonth[k].toFixed(1)} L"></div>
+      <div class="bl">${mo}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  ADD ENTRY
+// ══════════════════════════════════════════════════════════
+function addEntry(){
+  const date=document.getElementById('fDate').value;
+  const type=document.getElementById('fOil').value;
+  const equip=document.getElementById('fEquip').value;
+  const vol=parseFloat(document.getElementById('fVol').value);
+  const src=document.getElementById('fSrc').value;
+  if(!date){toast('⚠️','Select a date.','var(--orange)');return;}
+  if(isNaN(vol)||vol<=0){toast('⚠️','Enter a valid volume.','var(--orange)');return;}
+  if(vol>(inv[type]||0)){
+    toast('❌',`Not enough ${type}! Only ${(inv[type]||0).toFixed(1)} L available.`,'var(--red)');return;
+  }
+  inv[type]=(inv[type]||0)-vol;
+  logs.unshift({id:Date.now(),date,type,equip,vol,source:src});
+  sv(); fillEquipFilter(); render();
+  document.getElementById('fVol').value='';
+  toast('✅',`${vol} L of ${type} logged — ${equip}`,'var(--green)');
+}
+
+// ══════════════════════════════════════════════════════════
+//  DELETE ENTRY
+// ══════════════════════════════════════════════════════════
+function delEntry(id){
+  if(!confirm('Delete this entry and restore volume to stock?'))return;
+  const i=logs.findIndex(l=>l.id===id); if(i===-1)return;
+  const l=logs[i];
+  inv[l.type]=(inv[l.type]||0)+l.vol;
+  logs.splice(i,1);
+  sv(); render();
+  toast('🗑️','Deleted, stock restored.','var(--dim)');
+}
+
+// ══════════════════════════════════════════════════════════
+//  RECEIVE
+// ══════════════════════════════════════════════════════════
+function openRecv(src){
+  recvSrc=src;
+  const titles={general:'Receive Oil Stock',203:'Receive from BRS-203',hmd:'Receive from HMD'};
+  const displays={general:'— General Stock —',203:'BRS-203',hmd:'HMD'};
+  document.getElementById('recvTitle').textContent=titles[src];
+  document.getElementById('rv-src-lbl').value=displays[src];
+  document.getElementById('rv-vol').value='';
+  document.getElementById('rv-note').value='';
+  document.getElementById('rv-date').valueAsDate=new Date();
+  document.getElementById('recvModal').classList.add('open');
+}
+
+function confirmRecv(){
+  const oil=document.getElementById('rv-oil').value;
+  const vol=parseFloat(document.getElementById('rv-vol').value);
+  const date=document.getElementById('rv-date').value;
+  const note=document.getElementById('rv-note').value;
+  if(isNaN(vol)||vol<=0){toast('⚠️','Enter a valid volume.','var(--orange)');return;}
+  inv[oil]=(inv[oil]||0)+vol;
+  recpts.unshift({id:Date.now(),date,oil,vol,source:recvSrc,note});
+  sv(); renderStock(); renderSourceCards(); renderStats();
+  closeM('recvModal');
+  const lbl=recvSrc==='203'?'BRS-203':recvSrc==='hmd'?'HMD':'stock';
+  toast('📥',`${vol} L of ${oil} received from ${lbl}`,'var(--green)');
+}
+
+function quickRecv(){
+  const oil=document.getElementById('qrOil').value;
+  const vol=parseFloat(document.getElementById('qrVol').value);
+  if(isNaN(vol)||vol<=0){toast('⚠️','Enter volume.','var(--orange)');return;}
+  inv[oil]=(inv[oil]||0)+vol;
+  recpts.unshift({id:Date.now(),date:new Date().toISOString().slice(0,10),oil,vol,source:'general',note:'Quick add'});
+  sv(); renderStock(); renderSourceCards(); renderStats();
+  document.getElementById('qrVol').value='';
+  toast('📥',`+${vol} L of ${oil} added.`,'var(--green)');
+}
+
+// ══════════════════════════════════════════════════════════
+//  FILTERS & TABLE
+// ══════════════════════════════════════════════════════════
+function applyFilters(){
+  const q=(document.getElementById('srchQ').value||'').toLowerCase();
+  const oil=document.getElementById('fltOil').value;
+  const equip=document.getElementById('fltEquip').value;
+  const src=document.getElementById('fltSrc').value;
+  const from=document.getElementById('dFrom').value;
+  const to=document.getElementById('dTo').value;
+  filtered=logs.filter(l=>{
+    if(q&&!`${l.type}${l.equip}${l.date}${l.source||''}`.toLowerCase().includes(q))return false;
+    if(oil&&l.type!==oil)return false;
+    if(equip&&l.equip!==equip)return false;
+    if(src&&(l.source||'')!==src)return false;
+    if(from&&l.date<from)return false;
+    if(to&&l.date>to)return false;
+    return true;
+  });
+  filtered.sort((a,b)=>{
+    let av=a[sortCol],bv=b[sortCol];
+    if(sortCol==='vol'){av=+av;bv=+bv;}
+    return av<bv?sortDir:av>bv?-sortDir:0;
+  });
+  page=1; renderTable();
+}
+
+function clearFilters(){
+  ['srchQ','fltOil','fltEquip','fltSrc','dFrom','dTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  applyFilters();
+}
+
+function sortBy(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}
+  ['date','type','equip','vol'].forEach(c=>{
+    const th=document.getElementById('th-'+c);
+    if(th){th.classList.toggle('sorted',c===col);th.textContent=th.textContent.replace(/ [↑↓↕]/,'')+(c===col?(sortDir===1?' ↑':' ↓'):' ↕');}
+  });
+  applyFilters();
+}
+
+function renderTable(){
+  const total=filtered.length;
+  const pages=Math.max(1,Math.ceil(total/PER));
+  if(page>pages)page=pages;
+  const slice=filtered.slice((page-1)*PER,page*PER);
+  document.getElementById('cntBadge').innerHTML=`<b>${total}</b> entries`;
+  const body=document.getElementById('tbody');
+  const empty=document.getElementById('emptyState');
+  if(!total){body.innerHTML='';empty.style.display='block';document.getElementById('pager').innerHTML='';return;}
+  empty.style.display='none';
+  const srcTag=s=>s==='203'?'<span class="stag s203t">BRS-203</span>':s==='hmd'?'<span class="stag shmd">HMD</span>':'';
+  body.innerHTML=slice.map(l=>`<tr>
+    <td class="td-date">${l.date||'—'}</td>
+    <td><span class="otag ${OIL_TAGS[l.type]||'tother'}">${l.type}</span></td>
+    <td style="font-size:12px;">${l.equip}</td>
+    <td><span class="vv">${(+l.vol).toFixed(1)}</span><span class="vu"> L</span></td>
+    <td>${srcTag(l.source||'')}</td>
+    <td><button class="btn-d" onclick="delEntry(${l.id})">🗑</button></td>
+  </tr>`).join('');
+  const pg=document.getElementById('pager');
+  if(pages<=1){pg.innerHTML='';return;}
+  let h='';
+  if(page>1)h+=`<button class="pgb" onclick="goPage(${page-1})">‹</button>`;
+  for(let i=1;i<=pages;i++){
+    if(i===1||i===pages||Math.abs(i-page)<=1)h+=`<button class="pgb ${i===page?'cur':''}" onclick="goPage(${i})">${i}</button>`;
+    else if(Math.abs(i-page)===2)h+=`<span style="color:var(--muted);font-size:11px;padding:0 2px">…</span>`;
+  }
+  if(page<pages)h+=`<button class="pgb" onclick="goPage(${page+1})">›</button>`;
+  pg.innerHTML=h;
+}
+
+function goPage(p){page=p;renderTable();}
+
+// ══════════════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════════════
+function openSettings(){
+  document.getElementById('s-station').value=station;
+
+  // Initial stock
+  document.getElementById('s-initStock').innerHTML=oilTypes.map(o=>`
+    <div class="set-row">
+      <div><div class="set-lbl">${o}</div><div class="set-sub">Current: ${(inv[o]||0).toFixed(1)} L</div></div>
+      <input type="number" class="set-inp" id="si-${o}" value="${initStock[o]||0}" step="0.5" min="0">
+    </div>`).join('');
+
+  document.getElementById('s-alerts').innerHTML=oilTypes.map(o=>`
+    <div class="set-row">
+      <div><div class="set-lbl">${o}</div><div class="set-sub">Alert when below this</div></div>
+      <input type="number" class="set-inp" id="sa-${o}" value="${alerts[o]||5}" step="0.5" min="0">
+    </div>`).join('');
+
+  document.getElementById('s-max').innerHTML=oilTypes.map(o=>`
+    <div class="set-row">
+      <div><div class="set-lbl">${o}</div><div class="set-sub">For progress bar scale</div></div>
+      <input type="number" class="set-inp" id="sm-${o}" value="${maxInv[o]||200}" step="1" min="1">
+    </div>`).join('');
+
+  document.getElementById('s-oils').innerHTML=oilTypes.map((o,i)=>`
+    <div class="set-row">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;">${o}</span>
+      <button class="set-rmv" onclick="removeOil(${i})">✕ Remove</button>
+    </div>`).join('');
+
+  document.getElementById('s-equip').innerHTML=equipList.map((e,i)=>`
+    <div class="set-row">
+      <span style="font-size:12px;">${e}</span>
+      <button class="set-rmv" onclick="removeEquip(${i})">✕ Remove</button>
+    </div>`).join('');
+
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function saveSettings(){
+  station=document.getElementById('s-station').value.trim()||'BRS-203';
+  document.getElementById('stationLabel').textContent=`WALID OS · ${station}`;
+  localStorage.setItem('wos3_station',JSON.stringify(station));
+  oilTypes.forEach(o=>{
+    const si=document.getElementById('si-'+o);
+    const sa=document.getElementById('sa-'+o);
+    const sm=document.getElementById('sm-'+o);
+    if(si) initStock[o]=parseFloat(si.value)||0;
+    if(sa) alerts[o]=parseFloat(sa.value)||5;
+    if(sm) maxInv[o]=parseFloat(sm.value)||200;
+  });
+  sv(); render();
+  closeM('settingsModal');
+  toast('💾','Settings saved!','var(--blue)');
+}
+
+function addOilType(){
+  const n=document.getElementById('newOilName').value.trim();
+  const s=parseFloat(document.getElementById('newOilInit').value)||0;
+  if(!n){toast('⚠️','Enter oil name.','var(--orange)');return;}
+  if(oilTypes.includes(n)){toast('⚠️','Already exists.','var(--orange)');return;}
+  oilTypes.push(n); inv[n]=s; initStock[n]=s; alerts[n]=5; maxInv[n]=200;
+  sv(); buildAllSelects(); openSettings();
+  document.getElementById('newOilName').value='';
+  document.getElementById('newOilInit').value='';
+  toast('✅',`${n} added.`,'var(--green)');
+}
+
+function removeOil(i){
+  if(!confirm(`Remove "${oilTypes[i]}"?`))return;
+  const o=oilTypes[i]; oilTypes.splice(i,1);
+  delete inv[o]; delete initStock[o]; delete alerts[o]; delete maxInv[o];
+  sv(); buildAllSelects(); openSettings();
+}
+
+function addEquipment(){
+  const n=document.getElementById('newEquipName').value.trim();
+  if(!n){toast('⚠️','Enter equipment name.','var(--orange)');return;}
+  if(equipList.includes(n)){toast('⚠️','Already exists.','var(--orange)');return;}
+  equipList.push(n); sv(); fillEquipSelects(); openSettings();
+  document.getElementById('newEquipName').value='';
+  toast('✅',`${n} added.`,'var(--green)');
+}
+
+function removeEquip(i){
+  if(!confirm(`Remove "${equipList[i]}"?`))return;
+  equipList.splice(i,1); sv(); fillEquipSelects(); openSettings();
+}
+
+// ══════════════════════════════════════════════════════════
+//  GITHUB GIST SYNC
+// ══════════════════════════════════════════════════════════
+function openGithub(){
+  document.getElementById('ghToken').value=ghToken||'';
+  document.getElementById('ghGistId').value=ghGistId||'';
+  document.getElementById('ghGistDisplay').textContent=ghGistId?ghGistId.slice(0,20)+'…':'—';
+  document.getElementById('ghLastSync').textContent=ghLastSync||'Never';
+  document.getElementById('ghConnectedInfo').style.display=ghToken?'block':'none';
+  document.getElementById('ghDisconnectBtn').style.display=ghToken?'block':'none';
+  document.getElementById('githubModal').classList.add('open');
+}
+
+function toggleTokenVis(){
+  const el=document.getElementById('ghToken');
+  el.type=el.type==='password'?'text':'password';
+}
+
+function connectGithub(){
+  const tok=document.getElementById('ghToken').value.trim();
+  const gid=document.getElementById('ghGistId').value.trim();
+  if(!tok){toast('⚠️','Enter your GitHub token.','var(--orange)');return;}
+  ghToken=tok; if(gid)ghGistId=gid;
+  sv(); updateGithubUI();
+  closeM('githubModal');
+  toast('🔗','GitHub connected! Click ☁️ Save Online to sync.','var(--green)');
+}
+
+function disconnectGithub(){
+  if(!confirm('Disconnect GitHub? Your local data stays.'))return;
+  ghToken=''; ghGistId=''; ghLastSync='';
+  localStorage.removeItem('wos3_ghtoken'); localStorage.removeItem('wos3_ghgist'); localStorage.removeItem('wos3_ghsync');
+  updateGithubUI();
+  closeM('githubModal');
+  toast('🔌','Disconnected from GitHub.','var(--dim)');
+}
+
+function updateGithubUI(){
+  const pill=document.getElementById('syncPill');
+  const sBtn=document.getElementById('syncBtn');
+  const pBtn=document.getElementById('pullBtn');
+  if(ghToken){
+    pill.className='sync-pill connected';
+    document.getElementById('syncLabel').textContent='GitHub connected';
+    sBtn.style.display='flex'; pBtn.style.display='flex';
+  } else {
+    pill.className='sync-pill disconnected';
+    document.getElementById('syncLabel').textContent='Not connected';
+    sBtn.style.display='none'; pBtn.style.display='none';
+  }
+}
+
+function getPayload(){
+  return {inv,initStock,logs,recpts,alerts,maxInv,oilTypes,equipList,station,savedAt:new Date().toISOString()};
+}
+
+async function syncToGithub(){
+  if(!ghToken){toast('⚠️','Connect GitHub first.','var(--orange)');return;}
+  setSyncState('syncing','Saving…');
+  try{
+    const content=JSON.stringify(getPayload(),null,2);
+    const filename='walidos_oil_data.json';
+    let url,method,body;
+    if(ghGistId){
+      url=`https://api.github.com/gists/${ghGistId}`;
+      method='PATCH';
+      body=JSON.stringify({description:'WalidOS Oil Manager Data',files:{[filename]:{content}}});
+    } else {
+      url='https://api.github.com/gists';
+      method='POST';
+      body=JSON.stringify({description:'WalidOS Oil Manager Data',public:false,files:{[filename]:{content}}});
+    }
+    const r=await fetch(url,{method,headers:{'Authorization':`token ${ghToken}`,'Content-Type':'application/json'},body});
+    if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}
+    const data=await r.json();
+    if(!ghGistId){ghGistId=data.id; localStorage.setItem('wos3_ghgist',JSON.stringify(ghGistId));}
+    ghLastSync=new Date().toLocaleString(); localStorage.setItem('wos3_ghsync',JSON.stringify(ghLastSync));
+    setSyncState('connected','Saved ✓');
+    toast('☁️','Data saved to GitHub Gist!','var(--green)');
+    setTimeout(()=>setSyncState('connected','GitHub connected'),3000);
+  }catch(e){setSyncState('error','Sync failed');toast('❌','GitHub error: '+e.message,'var(--red)');setTimeout(()=>updateGithubUI(),3000);}
+}
+
+async function pullFromGithub(){
+  if(!ghToken||!ghGistId){toast('⚠️','Connect and save first.','var(--orange)');return;}
+  setSyncState('syncing','Pulling…');
+  try{
+    const r=await fetch(`https://api.github.com/gists/${ghGistId}`,{headers:{'Authorization':`token ${ghToken}`}});
+    if(!r.ok)throw new Error(r.status);
+    const data=await r.json();
+    const file=data.files['walidos_oil_data.json'];
+    if(!file)throw new Error('No data file found in Gist.');
+    const d=JSON.parse(file.content);
+    if(!confirm(`Pull data from GitHub?\nSaved: ${d.savedAt||'unknown'}\nThis will replace current local data.`)){setSyncState('connected','GitHub connected');return;}
+    if(d.inv)inv=d.inv; if(d.initStock)initStock=d.initStock;
+    if(d.logs)logs=d.logs; if(d.recpts)recpts=d.recpts;
+    if(d.alerts)alerts=d.alerts; if(d.maxInv)maxInv=d.maxInv;
+    if(d.oilTypes)oilTypes=d.oilTypes; if(d.equipList)equipList=d.equipList;
+    if(d.station)station=d.station;
+    sv(); buildAllSelects(); render();
+    setSyncState('connected','GitHub connected');
+    toast('⬇️','Data pulled from GitHub!','var(--blue)');
+  }catch(e){setSyncState('error','Pull failed');toast('❌','Pull error: '+e.message,'var(--red)');setTimeout(()=>updateGithubUI(),3000);}
+}
+
+function setSyncState(state,label){
+  const pill=document.getElementById('syncPill');
+  pill.className='sync-pill '+state;
+  document.getElementById('syncLabel').textContent=label;
+}
+
+// ══════════════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ══════════════════════════════════════════════════════════
+function openXls(){
+  const years=[...new Set([...logs.map(l=>l.date?l.date.slice(0,4):null),...recpts.map(r=>r.date?r.date.slice(0,4):null)].filter(Boolean))].sort();
+  if(!years.length)years.push(String(new Date().getFullYear()));
+  const ySel=document.getElementById('xlsYear');
+  ySel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  ySel.value=String(new Date().getFullYear());
+  xlsMonthSel=null; buildXlsMonths();
+  document.getElementById('xlsModal').classList.add('open');
+}
+
+function buildXlsMonths(){
+  const yr=document.getElementById('xlsYear').value;
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now=new Date();
+  document.getElementById('xlsMonths').innerHTML=MO.map((m,i)=>{
+    const key=`${yr}-${String(i+1).padStart(2,'0')}`;
+    const has=logs.some(l=>l.date&&l.date.startsWith(key));
+    const isCur=parseInt(yr)===now.getFullYear()&&i===now.getMonth();
+    const sel=xlsMonthSel===key;
+    return`<div class="xls-mb ${sel?'sel':''} ${has?'has-data':''}" onclick="selXlsMonth('${key}',this)">${m}${isCur?' ◀':''}</div>`;
+  }).join('');
+}
+
+function selXlsMonth(key,el){
+  xlsMonthSel=key;
+  document.querySelectorAll('.xls-mb').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function doExcelExport(){
+  if(!xlsMonthSel){toast('⚠️','Select a month.','var(--orange)');return;}
+  const [yr,mo]=xlsMonthSel.split('-');
+  const MO=['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  const mName=MO[parseInt(mo)];
+  const daysInMo=new Date(parseInt(yr),parseInt(mo),0).getDate();
+
+  const mLogs=logs.filter(l=>l.date&&l.date.startsWith(xlsMonthSel));
+  const mRec=recpts.filter(r=>r.date&&r.date.startsWith(xlsMonthSel));
+
+  // Per-oil stats
+  const oStats={};
+  oilTypes.forEach(oil=>{
+    const consumed=mLogs.filter(l=>l.type===oil).reduce((s,l)=>s+(+l.vol),0);
+    const recv203=mRec.filter(r=>r.oil===oil&&r.source==='203').reduce((s,r)=>s+r.vol,0);
+    const recvHMD=mRec.filter(r=>r.oil===oil&&r.source==='hmd').reduce((s,r)=>s+r.vol,0);
+    const recvGen=mRec.filter(r=>r.oil===oil&&r.source==='general').reduce((s,r)=>s+r.vol,0);
+    const totalRecv=recv203+recvHMD+recvGen;
+    const closeStock=inv[oil]||0;
+    const openStock=initStock[oil]||0;
+    const dailyRate=consumed/daysInMo;
+    const daysLeft=dailyRate>0?(closeStock/dailyRate):999;
+    oStats[oil]={consumed,recv203,recvHMD,recvGen,totalRecv,closeStock,openStock,dailyRate,daysLeft};
+  });
+
+  // Per-equipment stats
+  const eStats={};
+  mLogs.forEach(l=>{
+    if(!eStats[l.equip])eStats[l.equip]={};
+    eStats[l.equip][l.type]=(eStats[l.equip][l.type]||0)+(+l.vol);
+  });
+
+  const wb=XLSX.utils.book_new();
+  const H={font:{bold:true,color:{rgb:"FFFFFF"},sz:10},fill:{fgColor:{rgb:"111827"}},alignment:{horizontal:"center",vertical:"center"},border:{bottom:{style:"medium",color:{rgb:"F59E0B"}}}};
+  const TITLE={font:{bold:true,sz:13,color:{rgb:"F59E0B"}},alignment:{horizontal:"center"}};
+
+  // ─── Sheet 1: Summary ───
+  const S1=[];
+  S1.push([`OIL MANAGEMENT MONTHLY REPORT — ${mName} ${yr}  |  Station: ${station}`]);
+  S1.push([`Generated: ${new Date().toLocaleString('en-GB')}`]);
+  S1.push([]);
+  S1.push(['OIL TYPE','INITIAL STOCK (L)','RECEIVED GENERAL','RECEIVED BRS-203','RECEIVED HMD','TOTAL RECEIVED','CONSUMED (L)','CLOSING STOCK (L)','DAILY RATE (L/d)','DAYS SUPPLY LEFT']);
+  let sumCon=0,sumRec=0;
+  oilTypes.forEach(oil=>{
+    const s=oStats[oil];
+    sumCon+=s.consumed; sumRec+=s.totalRecv;
+    S1.push([oil,s.openStock.toFixed(1),s.recvGen.toFixed(1),s.recv203.toFixed(1),s.recvHMD.toFixed(1),s.totalRecv.toFixed(1),s.consumed.toFixed(1),s.closeStock.toFixed(1),s.dailyRate.toFixed(2),s.daysLeft<999?s.daysLeft.toFixed(0):'∞']);
+  });
+  S1.push([]);
+  S1.push(['TOTALS','','','','','',sumRec.toFixed(1),'',sumCon.toFixed(1),'']);
+  S1.push([]);
+  S1.push(['SUPPLY SUMMARY BY SOURCE','Volume (L)','% of Total','']);
+  const tot203=mRec.filter(r=>r.source==='203').reduce((s,r)=>s+r.vol,0);
+  const totHMD=mRec.filter(r=>r.source==='hmd').reduce((s,r)=>s+r.vol,0);
+  const totGen=mRec.filter(r=>r.source==='general').reduce((s,r)=>s+r.vol,0);
+  const totAll=tot203+totHMD+totGen||1;
+  S1.push(['From BRS-203',tot203.toFixed(1),(tot203/totAll*100).toFixed(1)+'%','']);
+  S1.push(['From HMD',totHMD.toFixed(1),(totHMD/totAll*100).toFixed(1)+'%','']);
+  S1.push(['General',totGen.toFixed(1),(totGen/totAll*100).toFixed(1)+'%','']);
+  S1.push(['TOTAL',(tot203+totHMD+totGen).toFixed(1),'100%','']);
+  const ws1=XLSX.utils.aoa_to_sheet(S1);
+  ws1['!cols']=[{wch:14},{wch:16},{wch:17},{wch:17},{wch:14},{wch:15},{wch:14},{wch:16},{wch:16},{wch:16}];
+  ws1['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}}];
+  if(ws1['A1'])ws1['A1'].s=TITLE;
+  'ABCDEFGHIJ'.split('').forEach(c=>{const r=ws1[c+'4'];if(r)r.s=H;});
+  XLSX.utils.book_append_sheet(wb,ws1,'Summary');
+
+  // ─── Sheet 2: Daily Log ───
+  const S2=[];
+  S2.push([`DAILY CONSUMPTION LOG — ${mName} ${yr}  |  ${station}`]);
+  S2.push([]);
+  S2.push(['#','Date','Oil Type','Equipment','Volume (L)','Source','Note']);
+  if(!mLogs.length)S2.push(['','No entries for this month','','','','','']);
+  mLogs.forEach((l,i)=>{
+    const src=l.source==='203'?'BRS-203':l.source==='hmd'?'HMD':'—';
+    S2.push([i+1,l.date,l.type,l.equip,(+l.vol).toFixed(1),src,l.note||'']);
+  });
+  S2.push([]);
+  S2.push(['','','','TOTAL',mLogs.reduce((s,l)=>s+(+l.vol),0).toFixed(1),'','']);
+  const ws2=XLSX.utils.aoa_to_sheet(S2);
+  ws2['!cols']=[{wch:5},{wch:12},{wch:12},{wch:22},{wch:12},{wch:12},{wch:28}];
+  ws2['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
+  if(ws2['A1'])ws2['A1'].s=TITLE;
+  'ABCDEFG'.split('').forEach(c=>{const r=ws2[c+'3'];if(r)r.s=H;});
+  XLSX.utils.book_append_sheet(wb,ws2,'Daily Log');
+
+  // ─── Sheet 3: Equipment Stats ───
+  const S3=[];
+  S3.push([`EQUIPMENT CONSUMPTION STATS — ${mName} ${yr}  |  ${station}`]);
+  S3.push([]);
+  S3.push(['Equipment','Oil Type','Total (L)','Entries','Avg/Entry (L)','% of Oil Total']);
+  const rows3=[];
+  Object.entries(eStats).forEach(([eq,oils])=>{
+    Object.entries(oils).forEach(([oil,total])=>{
+      const entries=mLogs.filter(l=>l.equip===eq&&l.type===oil).length;
+      const oilTotal=oStats[oil]?.consumed||total;
+      rows3.push([eq,oil,total.toFixed(1),entries,(total/entries).toFixed(2),(total/oilTotal*100).toFixed(1)+'%']);
+    });
+  });
+  rows3.sort((a,b)=>parseFloat(b[2])-parseFloat(a[2]));
+  if(!rows3.length)S3.push(['No data','','','','','']);
+  rows3.forEach(r=>S3.push(r));
+  const ws3=XLSX.utils.aoa_to_sheet(S3);
+  ws3['!cols']=[{wch:22},{wch:12},{wch:12},{wch:9},{wch:15},{wch:14}];
+  ws3['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+  if(ws3['A1'])ws3['A1'].s=TITLE;
+  'ABCDEF'.split('').forEach(c=>{const r=ws3[c+'3'];if(r)r.s=H;});
+  XLSX.utils.book_append_sheet(wb,ws3,'Equipment Stats');
+
+  // ─── Sheet 4: Supply Records ───
+  const S4=[];
+  S4.push([`SUPPLY RECORDS — ${mName} ${yr}  |  ${station}`]);
+  S4.push([]);
+  S4.push(['#','Date','Oil Type','Volume (L)','Source','Note']);
+  if(!mRec.length)S4.push(['','No receipts for this month','','','','']);
+  mRec.forEach((r,i)=>{
+    const src=r.source==='203'?'BRS-203':r.source==='hmd'?'HMD':'General';
+    S4.push([i+1,r.date,r.oil,(+r.vol).toFixed(1),src,r.note||'']);
+  });
+  S4.push([]);
+  S4.push(['','','TOTAL',mRec.reduce((s,r)=>s+r.vol,0).toFixed(1),'','']);
+  const ws4=XLSX.utils.aoa_to_sheet(S4);
+  ws4['!cols']=[{wch:5},{wch:12},{wch:14},{wch:12},{wch:12},{wch:32}];
+  ws4['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+  if(ws4['A1'])ws4['A1'].s=TITLE;
+  'ABCDEF'.split('').forEach(c=>{const r=ws4[c+'3'];if(r)r.s=H;});
+  XLSX.utils.book_append_sheet(wb,ws4,'Supply Records');
+
+  XLSX.writeFile(wb,`Oil_Report_${mName}_${yr}_${station.replace(/[^a-z0-9]/gi,'_')}.xlsx`);
+  closeM('xlsModal');
+  toast('📊',`Excel report for ${mName} ${yr} downloaded!`,'var(--blue)');
+}
+
+// ══════════════════════════════════════════════════════════
+//  EXPORT / IMPORT JSON
+// ══════════════════════════════════════════════════════════
+function exportJSON(){
+  const d={inv,initStock,logs,recpts,alerts,maxInv,oilTypes,equipList,station,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`WalidOS_Oil_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); toast('📤','Backup exported.','var(--blue)');
+}
+
+function importJSON(evt){
+  const file=evt.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      if(!d.logs){toast('❌','Invalid backup file.','var(--red)');return;}
+      if(!confirm(`Import ${d.logs.length} entries from backup?\nExported: ${d.exportedAt||'unknown'}\nCurrent data will be replaced.`))return;
+      if(d.inv)inv=d.inv; if(d.initStock)initStock=d.initStock;
+      if(d.logs)logs=d.logs; if(d.recpts)recpts=d.recpts;
+      if(d.alerts)alerts=d.alerts; if(d.maxInv)maxInv=d.maxInv;
+      if(d.oilTypes)oilTypes=d.oilTypes; if(d.equipList)equipList=d.equipList;
+      if(d.station)station=d.station;
+      sv(); buildAllSelects(); render();
+      document.getElementById('stationLabel').textContent=`WALID OS · ${station}`;
+      toast('📂',`Imported ${d.logs.length} entries.`,'var(--green)');
+    }catch{toast('❌','Failed to read file.','var(--red)');}
+  };
+  r.readAsText(file); evt.target.value='';
+}
+
+// ══════════════════════════════════════════════════════════
+//  RESET
+// ══════════════════════════════════════════════════════════
+function toggleReset(){
+  document.getElementById('resetBtn').classList.toggle('armed',document.getElementById('lockCb').checked);
+}
+
+function doReset(){
+  if(!confirm('⚠️ CRITICAL: Wipe ALL data? This cannot be undone.\n\nAll logs, receipts and settings will be reset.'))return;
+  ['wos3_inv','wos3_init','wos3_logs','wos3_recpts','wos3_alerts','wos3_max','wos3_oils','wos3_equip','wos3_station'].forEach(k=>localStorage.removeItem(k));
+  location.reload();
+}
+
+// ══════════════════════════════════════════════════════════
+//  MODAL HELPERS
+// ══════════════════════════════════════════════════════════
+function closeM(id){document.getElementById(id).classList.remove('open');}
+['recvModal','githubModal','xlsModal','settingsModal','backupModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closeM(id);});
+});
+
+// ══════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════
+let toastT;
+function toast(icon,msg,color='var(--green)'){
+  const t=document.getElementById('toast');
+  document.getElementById('tIcon').textContent=icon;
+  document.getElementById('tMsg').textContent=msg;
+  t.style.borderColor=color;
+  t.classList.add('on');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('on'),3500);
+}
+
+// ══════════════════════════════════════════════════════════
+//  FILE SYSTEM AUTO-BACKUP
+// ══════════════════════════════════════════════════════════
+const FS_SUPPORTED = 'showDirectoryPicker' in window;
+let folderHandle = null;   // FileSystemDirectoryHandle (session only)
+let lastBackupTime = '';
+const BACKUP_FILENAME = 'oil_data.json';
+
+// Try to restore folder handle from IndexedDB across sessions
+const IDB_STORE = 'wos3_fs';
+const IDB_KEY   = 'folderHandle';
+
+async function idbGet(key){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open(IDB_STORE,1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('kv','readonly');
+      const r  = tx.objectStore('kv').get(key);
+      r.onsuccess = ()=>res(r.result);
+      r.onerror   = ()=>res(null);
+    };
+    req.onerror = ()=>res(null);
+  });
+}
+
+async function idbSet(key,val){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open(IDB_STORE,1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('kv','readwrite');
+      tx.objectStore('kv').put(val,key);
+      tx.oncomplete = ()=>res(true);
+      tx.onerror    = ()=>res(false);
+    };
+    req.onerror = ()=>res(false);
+  });
+}
+
+async function idbDel(key){
+  return new Promise((res)=>{
+    const req = indexedDB.open(IDB_STORE,1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('kv','readwrite');
+      tx.objectStore('kv').delete(key);
+      tx.oncomplete = ()=>res(true);
+    };
+    req.onerror = ()=>res(false);
+  });
+}
+
+async function initFileBackup(){
+  if(!FS_SUPPORTED){ updateBackupUI(); return; }
+  // Try to restore saved folder handle
+  const saved = await idbGet(IDB_KEY);
+  if(saved){
+    try{
+      // Verify permission
+      const perm = await saved.queryPermission({mode:'readwrite'});
+      if(perm === 'granted'){
+        folderHandle = saved;
+        // Try to restore data from folder on startup
+        await tryRestoreFromFolder(true);
+      } else {
+        // Permission not yet granted — keep handle, ask silently later
+        folderHandle = saved;
+      }
+    } catch(e){ folderHandle = null; await idbDel(IDB_KEY); }
+  }
+  updateBackupUI();
+}
+
+async function tryRestoreFromFolder(silent=false){
+  if(!folderHandle) return;
+  try{
+    // Request permission if needed
+    const perm = await folderHandle.requestPermission({mode:'readwrite'});
+    if(perm !== 'granted'){ updateBackupUI(); return; }
+
+    const fileHandle = await folderHandle.getFileHandle(BACKUP_FILENAME,{create:false}).catch(()=>null);
+    if(!fileHandle) return; // No backup yet
+
+    const file   = await fileHandle.getFile();
+    const text   = await file.text();
+    const d      = JSON.parse(text);
+    if(!d.logs) return;
+
+    const savedAt = d.savedAt ? new Date(d.savedAt).toLocaleString() : 'unknown';
+    if(silent){
+      // On startup auto-restore if data exists and local is empty
+      const localEmpty = logs.length === 0 && recpts.length === 0;
+      if(localEmpty && d.logs.length > 0){
+        loadFromData(d);
+        sv(); buildAllSelects(); render();
+        toast('📂',`Auto-restored ${d.logs.length} entries from backup folder.`,'var(--green)');
+      }
+    } else {
+      if(confirm(`Restore from backup?\nFile date: ${savedAt}\nEntries: ${d.logs.length}\n\nThis will replace current data.`)){
+        loadFromData(d);
+        sv(); buildAllSelects(); render();
+        toast('📂',`Restored ${d.logs.length} entries from folder.`,'var(--green)');
+      }
+    }
+  } catch(e){
+    if(!silent) toast('❌','Restore failed: '+e.message,'var(--red)');
+  }
+}
+
+function loadFromData(d){
+  if(d.inv)inv=d.inv; if(d.initStock)initStock=d.initStock;
+  if(d.logs)logs=d.logs; if(d.recpts)recpts=d.recpts;
+  if(d.alerts)alerts=d.alerts; if(d.maxInv)maxInv=d.maxInv;
+  if(d.oilTypes)oilTypes=d.oilTypes; if(d.equipList)equipList=d.equipList;
+  if(d.station)station=d.station;
+  document.getElementById('stationLabel').textContent=`WALID OS · ${station}`;
+}
+
+async function writeBackupFile(){
+  if(!folderHandle) return;
+  try{
+    const perm = await folderHandle.requestPermission({mode:'readwrite'});
+    if(perm !== 'granted'){ updateBackupUI(); return; }
+
+    const payload = {inv,initStock,logs,recpts,alerts,maxInv,oilTypes,equipList,station,savedAt:new Date().toISOString()};
+    const fileHandle = await folderHandle.getFileHandle(BACKUP_FILENAME,{create:true});
+    const writable   = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(payload,null,2));
+    await writable.close();
+
+    lastBackupTime = new Date().toLocaleString();
+    localStorage.setItem('wos3_lastbackup', lastBackupTime);
+    updateBackupUI();
+  } catch(e){
+    // Silent fail if permission denied mid-session
+    console.warn('Backup write failed:',e.message);
+  }
+}
+
+async function chooseFolder(){
+  if(!FS_SUPPORTED){ toast('❌','Not supported in this browser.','var(--red)'); return; }
+  try{
+    const handle = await window.showDirectoryPicker({mode:'readwrite',startIn:'documents'});
+    folderHandle = handle;
+    await idbSet(IDB_KEY, handle);
+    lastBackupTime = '';
+    updateBackupUI();
+    closeM('backupModal');
+    toast('📁',`Backup folder set: ${handle.name}`,'var(--green)');
+    // Immediately write a backup
+    await writeBackupFile();
+  } catch(e){
+    if(e.name !== 'AbortError') toast('❌','Could not access folder: '+e.message,'var(--red)');
+  }
+}
+
+async function forgetFolder(){
+  if(!confirm('Remove backup folder? Auto-backup will stop.\n\nThe backup file on disk is NOT deleted.')) return;
+  folderHandle = null;
+  await idbDel(IDB_KEY);
+  lastBackupTime = '';
+  updateBackupUI();
+  closeM('backupModal');
+  toast('🗑️','Backup folder removed.','var(--dim)');
+}
+
+async function manualRestoreFromFolder(){
+  await tryRestoreFromFolder(false);
+  closeM('backupModal');
+}
+
+function updateBackupUI(){
+  const pill  = document.getElementById('backupPill');
+  const icon  = document.getElementById('backupIcon');
+  const label = document.getElementById('backupLabel');
+  const bkMain     = document.getElementById('bk-main');
+  const bkNoSupport= document.getElementById('bk-no-support');
+  const bkForgetBtn= document.getElementById('bk-forget-btn');
+  const bkRestoreBtn=document.getElementById('bk-restore-btn');
+  const bkFolderName=document.getElementById('bk-folder-name');
+  const bkLastTime  =document.getElementById('bk-last-time');
+  const bkChooseBtn =document.getElementById('bk-choose-btn');
+
+  if(!FS_SUPPORTED){
+    pill.className='backup-pill unsupported';
+    icon.textContent='⚠️'; label.textContent='Backup: Unsupported';
+    if(bkMain)bkMain.style.display='none';
+    if(bkNoSupport)bkNoSupport.style.display='block';
+    if(bkChooseBtn)bkChooseBtn.style.display='none';
+    return;
+  }
+  if(bkNoSupport)bkNoSupport.style.display='none';
+  if(bkMain)bkMain.style.display='block';
+
+  const lbt = lastBackupTime || localStorage.getItem('wos3_lastbackup') || '';
+  if(folderHandle){
+    pill.className='backup-pill has-folder';
+    icon.textContent='✅'; label.textContent=`Backup: ${folderHandle.name}`;
+    if(bkFolderName)bkFolderName.textContent=folderHandle.name;
+    if(bkLastTime)bkLastTime.textContent=lbt||'Pending…';
+    if(bkForgetBtn)bkForgetBtn.style.display='flex';
+    if(bkRestoreBtn)bkRestoreBtn.style.display='flex';
+    if(bkChooseBtn)bkChooseBtn.textContent='📁 Change Folder';
+  } else {
+    pill.className='backup-pill no-folder';
+    icon.textContent='💾'; label.textContent='Auto-backup: Off';
+    if(bkFolderName)bkFolderName.textContent='None selected';
+    if(bkLastTime)bkLastTime.textContent='—';
+    if(bkForgetBtn)bkForgetBtn.style.display='none';
+    if(bkRestoreBtn)bkRestoreBtn.style.display='none';
+    if(bkChooseBtn)bkChooseBtn.textContent='📁 Choose Folder';
+  }
+}
+
+function handleBackupPillClick(){
+  if(!FS_SUPPORTED){ toast('⚠️','Use Chrome or Edge for file backup.','var(--orange)'); return; }
+  document.getElementById('backupModal').classList.add('open');
+  updateBackupUI();
+}
+
+// ══════════════════════════════════════════════════════════
+//  HAMBURGER MENU TOGGLE
+// ══════════════════════════════════════════════════════════
+function toggleTbMenu(){
+  const dd=document.getElementById('tbDropdown');
+  const btn=document.getElementById('menuBtn');
+  const open=!dd.classList.contains('open');
+  dd.classList.toggle('open',open);
+  btn.classList.toggle('open',open);
+}
+function closeTbMenu(){
+  document.getElementById('tbDropdown')?.classList.remove('open');
+  document.getElementById('menuBtn')?.classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.tb-menu-wrap');
+  if(wrap&&!wrap.contains(e.target))closeTbMenu();
+});
+
+// ══════════════════════════════════════════════════════════
+//  THEME — DARK / LIGHT
+// ══════════════════════════════════════════════════════════
+function applyTheme(dark){
+  isDark = dark;
+  if(dark){
+    document.documentElement.classList.remove('light');
+    document.getElementById('themeIcon').textContent='🌙';
+    document.getElementById('themeLabel').textContent=' Dark';
+  } else {
+    document.documentElement.classList.add('light');
+    document.getElementById('themeIcon').textContent='☀️';
+    document.getElementById('themeLabel').textContent=' Light';
+  }
+  localStorage.setItem('wos3_theme', dark?'dark':'light');
+}
+function toggleTheme(){ applyTheme(!isDark); }
+
+// ══════════════════════════════════════════════════════════
+//  PWA — ICON + MANIFEST + SERVICE WORKER
+// ══════════════════════════════════════════════════════════
+(function setupPWA(){
+  const iconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1a2236"/><stop offset="100%" style="stop-color:#0a0e16"/></linearGradient><linearGradient id="drum" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#f59e0b"/><stop offset="60%" style="stop-color:#d97706"/><stop offset="100%" style="stop-color:#92400e"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="8" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter></defs><rect width="512" height="512" rx="96" fill="url(#bg)"/><ellipse cx="256" cy="280" rx="130" ry="130" fill="#f59e0b" opacity="0.08" filter="url(#glow)"/><rect x="148" y="160" width="216" height="240" rx="28" fill="url(#drum)"/><ellipse cx="256" cy="160" rx="108" ry="22" fill="#fbbf24"/><ellipse cx="256" cy="160" rx="90" ry="14" fill="#f59e0b"/><rect x="148" y="224" width="216" height="14" rx="4" fill="#92400e" opacity="0.5"/><rect x="148" y="300" width="216" height="14" rx="4" fill="#92400e" opacity="0.5"/><ellipse cx="256" cy="158" rx="22" ry="8" fill="#1a2236"/><ellipse cx="256" cy="156" rx="14" ry="5" fill="#f59e0b"/><path d="M256 220 C256 220 224 262 224 288 C224 305.7 238.3 320 256 320 C273.7 320 288 305.7 288 288 C288 262 256 220 256 220Z" fill="#1a2236" opacity="0.7"/><path d="M256 236 C256 236 234 266 234 285 C234 298.8 243.9 310 256 310 C268.1 310 278 298.8 278 285 C278 266 256 236 256 236Z" fill="#fef3c7" opacity="0.9"/><text x="256" y="426" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#fbbf24" opacity="0.9">BRS-203</text></svg>`;
+
+  function svgToPng(svg,size,cb){
+    const canvas=document.createElement('canvas');
+    canvas.width=canvas.height=size;
+    const img=new Image();
+    img.onload=()=>{canvas.getContext('2d').drawImage(img,0,0,size,size);cb(canvas.toDataURL('image/png'));};
+    img.onerror=()=>cb('data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg))));
+    img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
+  }
+
+  function injectManifest(i192,i512){
+    const m={name:'WalidOS · Oil Manager',short_name:'Oil Manager',description:'Oil tracking for BRS-203',start_url:'./',display:'standalone',orientation:'landscape',background_color:'#0a0e16',theme_color:'#f59e0b',icons:[{src:i192,sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+    const blob=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+    let ml=document.querySelector('#pwa-manifest');
+    if(!ml){ml=document.createElement('link');ml.rel='manifest';ml.id='pwa-manifest';document.head.appendChild(ml);}
+    ml.href=URL.createObjectURL(blob);
+    let al=document.querySelector('#apple-icon');
+    if(!al){al=document.createElement('link');al.rel='apple-touch-icon';al.id='apple-icon';document.head.appendChild(al);}
+    al.href=i192;
+    let fav=document.querySelector("link[rel='icon']");
+    if(!fav){fav=document.createElement('link');fav.rel='icon';fav.type='image/png';document.head.appendChild(fav);}
+    fav.href=i192;
+  }
+
+  svgToPng(iconSVG,192,i192=>svgToPng(iconSVG,512,i512=>injectManifest(i192,i512)));
+
+  const swCode=`const C='walidos-oil-v3';self.addEventListener('install',e=>{e.waitUntil(self.skipWaiting())});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(c=>{const n=fetch(e.request).then(r=>{if(r&&r.status===200&&r.type==='basic'){const cl=r.clone();caches.open(C).then(ca=>ca.put(e.request,cl))}return r}).catch(()=>{});return c||n}))});`;
+  if('serviceWorker' in navigator){
+    const swBlob=new Blob([swCode],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+  }
+
+  let deferredPrompt=null;
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault(); deferredPrompt=e;
+    if(window.matchMedia('(display-mode: standalone)').matches)return;
+    const b=document.createElement('div');
+    b.id='pwa-banner';
+    b.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1a2236;border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:12px;font-family:Barlow,sans-serif;font-size:13px;color:#f1f5f9;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:9999;';
+    b.innerHTML='<span style="font-size:20px">📲</span><div><b style="color:#f59e0b;display:block">Install Oil Manager</b><span style="font-size:11px;color:#94a3b8">Add to desktop for offline access</span></div><button onclick="installPWA()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#0a0e16;border:none;border-radius:7px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;">Install</button><button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:6px;padding:5px 9px;font-size:11px;cursor:pointer;">✕</button>';
+    document.body.appendChild(b);
+    window._pwaPrompt=deferredPrompt;
+  });
+  window.installPWA=async function(){
+    if(!window._pwaPrompt)return;
+    window._pwaPrompt.prompt();
+    const r=await window._pwaPrompt.userChoice;
+    window._pwaPrompt=null;
+    document.getElementById('pwa-banner')?.remove();
+    if(r.outcome==='accepted')toast('📲','App installed! Find it on your desktop.','var(--green)');
+  };
+})();
+
+// ══════════════════════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
